@@ -28,7 +28,6 @@ An AWS Lambda function authenticates to Vault using the **Vault Lambda Extension
 
 | Decision | Rationale |
 |---|---|
-| EC2 in public subnet | Eliminates expensive NAT Gateway (~$32/month). Lambda only needs VPC-local routing to reach EC2. |
 | EC2 Instance Connect Endpoint (EICE) | Keypair-free SSH using IAM credentials. No bastion host needed. |
 | Vault Lambda Extension — proxy mode | Extension handles all auth + token lifecycle. Lambda code calls `localhost:8200` as if it were Vault directly. |
 | KMS auto-unseal | Vault unseals itself on restart without operator intervention. |

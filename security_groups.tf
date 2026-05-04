@@ -116,7 +116,7 @@ resource "aws_security_group" "ec2" {
 
 resource "aws_security_group" "lambda" {
   name        = "${var.project_name}-lambda-sg"
-  description = "Allow outbound to Vault/MongoDB on EC2 via VPC-local routing."
+  description = "Allow outbound to Vault/MongoDB EC2 and to AWS APIs."
   vpc_id      = local.vpc_id
 
   # Lambda's outbound traffic stays entirely within the VPC — it only talks to
