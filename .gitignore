@@ -32,3 +32,4 @@ init/terraform.tfstate.*.backup
 config/.terraform/
 config/.terraform.lock.hcl
 config/terraform.tfstate*
+*tfstate*

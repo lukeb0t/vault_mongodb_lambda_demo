@@ -165,25 +165,23 @@ When creating a Vault AWS auth role with `bound_iam_principal_arn`, Vault resolv
 
 ## Security Design Decisions
 
-This section documents the intentional security choices in `config/vault_auth.tf`. The Vault AWS auth role binding is **deliberately more restrictive than strictly required** for a demo. Each constraint is explained so operators know what can be relaxed for broader use cases.
+This section documents the security choices in `config/vault_auth.tf` and the practical constraints discovered during testing.
 
-### STS Assumed-Role ARN Binding (vs. IAM Role ARN)
+### Principal Binding — IAM Role ARN (not STS Assumed-Role ARN)
 
-The Vault auth role uses an **STS assumed-role ARN** as the principal binding:
-
-```
-arn:aws:sts::<account_id>:assumed-role/<role-name>/<function-name>
-```
-
-rather than the simpler **IAM role ARN**:
+The Vault auth role uses the **IAM role ARN** as the principal binding:
 
 ```
 arn:aws:iam::<account_id>:role/<role-name>
 ```
 
-**Why this matters:** When Lambda invokes a function it calls `sts:AssumeRole` and the resulting session name equals the **Lambda function name**. Including the function name in the ARN scopes this Vault role to exactly one Lambda function. Any other Lambda that shares the same IAM execution role cannot authenticate with this Vault role.
+**Why not the STS assumed-role ARN?**
 
-**How to relax:** Replace the `bound_iam_principal_arns` value with `data.aws_ssm_parameter.lambda_role_arn.value` (the IAM role ARN). This allows any caller assuming that IAM role to authenticate — useful for multi-function deployments.
+We attempted to use an STS assumed-role ARN (`arn:aws:sts::...:assumed-role/<role>/<function>`) to scope the binding to a single Lambda function by its session name. This does not work in practice. Vault's AWS IAM auth backend always resolves principal ARNs to their underlying IAM entity — STS session ARNs cannot be used as `bound_iam_principal_arns` values, regardless of the `resolve_aws_unique_ids` setting. Vault rejects login attempts with "does not belong to the role".
+
+**Effective scope with the IAM role ARN:** The `vault-mongo-demo-lambda-role` is a dedicated execution role created exclusively for this Lambda function. No other principal in the account has a trust policy allowing it to assume this role, so the binding is effectively single-function scoped in practice.
+
+→ To enforce this architecturally: ensure no other Lambda (or human) can assume `vault-mongo-demo-lambda-role` by auditing the role's trust policy in `init/iam.tf`.
 
 ### `bound_account_ids`
 
@@ -191,21 +189,19 @@ An explicit AWS account ID restriction adds defense-in-depth. Even if a principa
 
 **How to relax:** Remove the `bound_account_ids` attribute entirely.
 
-### `resolve_aws_unique_ids`
+### `resolve_aws_unique_ids = true`
 
-> **Note:** `resolve_aws_unique_ids` is set to `false` in this module because Vault can only resolve **IAM ARNs** (`arn:aws:iam::…`) to internal unique IDs — STS session ARNs (`arn:aws:sts::…`) represent ephemeral sessions and have no stable unique ID. Since this module uses STS assumed-role ARNs for tight function-name scoping, these two controls are mutually exclusive.
+Vault resolves the IAM role ARN to its opaque internal unique ID (`AROA…`) and stores that ID — not the human-readable ARN — as the binding. If the IAM role is deleted and re-created with the same name, it gets a new unique ID and the binding breaks automatically. This prevents role-shadowing attacks.
 
-When set to `true` (only valid with IAM role ARNs), Vault resolves the principal ARN to its opaque internal unique ID (`AROA…`) and stores that as the binding. If the IAM role is deleted and re-created with the same name, the unique ID changes, breaking the binding automatically — preventing role-shadowing attacks.
-
-**How to enable:** Switch `bound_iam_principal_arns` back to the IAM role ARN (`data.aws_ssm_parameter.lambda_role_arn.value`) and set `resolve_aws_unique_ids = true`. You lose function-name scoping but gain protection against role deletion/recreation attacks.
+**How to relax:** Set `resolve_aws_unique_ids = false` for ARN string matching (role recreation preserves access).
 
 ### Summary Table
 
-| Control | What it restricts | How to relax / enable |
+| Control | What it restricts | How to relax |
 |---|---|---|
-| STS assumed-role ARN | Scopes to a single Lambda function, not just the IAM role | Use IAM role ARN: `data.aws_ssm_parameter.lambda_role_arn.value` |
+| IAM role ARN binding | Scopes to callers assuming `vault-mongo-demo-lambda-role` | Use a different/broader role ARN |
 | `bound_account_ids` | Prevents cross-account authentication | Remove the attribute |
-| `resolve_aws_unique_ids` | **Currently `false`** — incompatible with STS ARNs. Enable by switching to IAM role ARN + setting `true` | Set to `true` only after switching to IAM role ARN |
+| `resolve_aws_unique_ids = true` | Breaks binding if IAM role is deleted + recreated | Set to `false` |
 
 ---
 
