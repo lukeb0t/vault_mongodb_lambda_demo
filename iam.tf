@@ -90,6 +90,7 @@ resource "aws_iam_role_policy" "ec2" {
         # The EC2 user_data script writes the Vault root token and init output
         # to SSM Parameter Store (as SecureString) so operators can retrieve
         # them later without logging into the instance.
+        # NOT A BEST PRACTICE for production use (ANTI-PATTERN) — do NOT store secrets in SSM Parameter Store in production without proper access controls and auditing.
         Sid    = "SSMParameterStore"
         Effect = "Allow"
         Action = [
@@ -146,6 +147,7 @@ resource "aws_iam_role_policy_attachment" "ec2_ssm" {
 
 # Allows the Lambda function (and operators) to retrieve the Vault root token
 # from SSM Parameter Store for debugging and operational purposes.
+# NOT A BEST PRACTICE for production use (ANTI-PATTERN)
 resource "aws_iam_role_policy" "lambda" {
   name = "${var.project_name}-lambda-policy"
   role = aws_iam_role.lambda.id

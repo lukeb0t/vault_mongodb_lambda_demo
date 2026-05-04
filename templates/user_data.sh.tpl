@@ -2,22 +2,27 @@
 # Bootstrap: installs Docker, starts MongoDB + Vault + mongo-express,
 # initialises Vault with KMS auto-unseal, configures AWS auth and dynamic
 # MongoDB credentials, and stores the root token in SSM.
-#
-# Terraform variables: ${aws_region} ${kms_key_id} ${mongo_admin_password}
-# ${mongo_vault_password} ${lambda_role_arn} ${ssm_param_prefix} ${project_name}
-# Bash variables use $VAR (no braces) to avoid Terraform template conflicts.
 set -euo pipefail
-exec >> /var/log/user-data.log 2>&1
+
+# Write to both the log file and the console (visible in get-console-output).
+exec > >(tee /var/log/user-data.log) 2>&1
 
 log() { echo "[$(date '+%Y-%m-%d %T')] $*"; }
 die() { log "ERROR: $*"; exit 1; }
 
 log "=== Bootstrap start ==="
 
-# ── Step 1: Docker ────────────────────────────────────────────────────────────
-dnf update -y && dnf install -y docker jq
+log "=== Bootstrap start ==="
+
+# ── Step 1: System packages + Docker ─────────────────────────────────────────
+log "Installing packages..."
+dnf update -y && dnf install -y docker jq ec2-instance-connect
 systemctl enable --now docker
 usermod -aG docker ec2-user
+
+# Restart sshd to pick up the ec2-instance-connect AuthorizedKeysCommand.
+systemctl restart sshd
+log "sshd restarted with ec2-instance-connect"
 
 # ── Step 2: Docker network ────────────────────────────────────────────────────
 docker network create vault-demo-net
@@ -81,16 +86,30 @@ mkdir -p /opt/vault/data /opt/vault/config
 chown -R 100:1000 /opt/vault/data /opt/vault/config
 chmod 750 /opt/vault/data && chmod 755 /opt/vault/config
 
-# ${aws_region} and ${kms_key_id} are replaced by Terraform templatefile;
-# they become literal strings before bash evaluates this heredoc.
+# Write vault.hcl.  Use multi-line block format for reliable HCL v1 parsing.
+# Terraform replaces ${aws_region} and ${kms_key_id} before bash runs this.
 cat > /opt/vault/config/vault.hcl << 'VAULTCONFIG'
-storage "file" { path = "/vault/data" }
-listener "tcp"  { address = "0.0.0.0:8200"; tls_disable = 1 }
-seal "awskms"   { region = "${aws_region}"; kms_key_id = "${kms_key_id}" }
+storage "file" {
+  path = "/vault/data"
+}
+
+listener "tcp" {
+  address     = "0.0.0.0:8200"
+  tls_disable = 1
+}
+
+seal "awskms" {
+  region     = "${aws_region}"
+  kms_key_id = "${kms_key_id}"
+}
+
 api_addr     = "http://0.0.0.0:8200"
 cluster_addr = "http://0.0.0.0:8201"
-ui = true
+ui           = true
 VAULTCONFIG
+
+log "vault.hcl written:"
+cat /opt/vault/config/vault.hcl
 
 docker run -d \
   --name vault --network vault-demo-net --restart unless-stopped \
@@ -107,7 +126,11 @@ log "Waiting for Vault API..."
 for i in $(seq 1 60); do
   STATUS=$(curl -s -o /dev/null -w "%%{http_code}" "$VAULT_ADDR/v1/sys/health" || true)
   [[ "$STATUS" =~ ^(200|429|501|503)$ ]] && log "Vault API up (HTTP $STATUS)" && break
-  [ "$i" -eq 60 ] && die "Vault API timeout"
+  if [ "$i" -eq 60 ]; then
+    log "Vault container logs:"
+    docker logs vault --tail 50 2>&1 || true
+    die "Vault API timeout"
+  fi
   sleep 5
 done
 
@@ -118,8 +141,9 @@ INIT_RESPONSE=$(curl -s -X PUT "$VAULT_ADDR/v1/sys/init" \
   -d '{"secret_shares":0,"secret_threshold":0,"recovery_shares":5,"recovery_threshold":3}')
 
 ROOT_TOKEN=$(echo "$INIT_RESPONSE" | jq -r '.root_token')
-[ -z "$ROOT_TOKEN" ] || [ "$ROOT_TOKEN" = "null" ] && \
+if [ -z "$ROOT_TOKEN" ] || [ "$ROOT_TOKEN" = "null" ]; then
   die "Vault init failed: $INIT_RESPONSE"
+fi
 
 aws ssm put-parameter --region "${aws_region}" \
   --name "${ssm_param_prefix}/root-token" --value "$ROOT_TOKEN" \
