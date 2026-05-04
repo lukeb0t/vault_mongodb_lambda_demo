@@ -49,38 +49,82 @@ The AWS identity running Terraform needs permissions to create: VPC, EC2, IAM ro
 
 ## Quick Start
 
-```bash
-# Clone the repo
-git clone https://github.com/lukeb0t/vault_mongodb_lambda_demo.git
-cd vault_mongodb_lambda_demo
+Deployment is a **two-step process**: `init/` creates infrastructure and bootstraps Vault; `config/` applies Vault configuration using Terraform's native Vault provider.
 
-# Create a terraform.tfvars file (see Variables section below)
+### Step 1 — Infrastructure (`init/`)
+
+```bash
+git clone https://github.com/lukeb0t/vault_mongodb_lambda_demo.git
+cd vault_mongodb_lambda_demo/init
+
+# (Optional) Create a terraform.tfvars — all variables have sensible defaults
 cat > terraform.tfvars <<VARS
 aws_region = "us-east-1"
 VARS
 
-# Deploy (takes ~5 minutes — EC2 bootstrap runs in the background)
+# Deploy infrastructure (~5 minutes; EC2 bootstrap runs in the background)
 terraform init
 terraform apply
 
-# After apply completes, wait ~5 minutes for the EC2 bootstrap to finish.
-# Then retrieve the Vault root token:
-$(terraform output -raw retrieve_vault_token_cmd)
+# After apply completes, wait for the EC2 bootstrap to finish.
+# The bootstrap writes a sentinel to SSM when done (~3-5 min after apply).
+# You can monitor it:
+aws ssm get-parameter \
+  --name '/vault-mongo-demo/root-token' \
+  --with-decryption \
+  --region us-east-1 \
+  --query Parameter.Value --output text
+# When this returns a value (hvs.xxx...) the bootstrap is done.
 
-# Open the Vault UI:
+# Verify Vault is up:
 echo "Vault UI: $(terraform output -raw vault_ui_url)"
+```
 
-# Open mongo-express:
-echo "mongo-express: $(terraform output -raw mongo_express_url)"
+### Step 2 — Vault Configuration (`config/`)
 
-# SSH into EC2 (no keypair needed):
-$(terraform output -raw ssh_command)
+The `config/` run uses the Vault provider to configure auth, the database secrets engine, and policies. It reads the Vault address and root token from SSM using a helper script.
 
-# Manually trigger the Lambda to run the demo:
+```bash
+cd ../config
+
+# Fetch Vault address + root token from SSM and export them as env vars.
+# The Vault provider reads VAULT_ADDR and VAULT_TOKEN automatically.
+eval $(../scripts/get-config-vars.sh)
+
+# Verify the values were set:
+echo "VAULT_ADDR=$VAULT_ADDR"
+
+terraform init
+terraform apply
+```
+
+### Verify the Demo
+
+```bash
+# Manually trigger the Lambda (it also runs automatically every 5 minutes):
 aws lambda invoke \
-  --function-name $(terraform output -raw lambda_function_name) \
+  --function-name vault-mongo-demo-demo \
   --region us-east-1 \
   /tmp/vault-demo-result.json && cat /tmp/vault-demo-result.json
+
+# Expected output:
+# {"success":true,"readBackVerified":true,"vaultDynamicUser":"v-aws-vault-mongo-lambda-mongo-ro-..."}
+```
+
+### Other Useful Commands
+
+```bash
+# Open the Vault UI (sign in with root token from SSM):
+cd init && echo "$(terraform output -raw vault_ui_url)"
+
+# Open mongo-express:
+echo "$(terraform output -raw mongo_express_url)"
+
+# SSH into EC2 (no keypair needed — uses EICE):
+$(terraform output -raw ssh_command)
+
+# Retrieve Vault root token:
+$(terraform output -raw retrieve_vault_token_cmd)
 ```
 
 ---
@@ -116,6 +160,52 @@ Lambda invoked
 ### Why `iam:GetRole` is Required
 
 When creating a Vault AWS auth role with `bound_iam_principal_arn`, Vault resolves the role ARN to its unique **Role ID** (a stable identifier that persists even if the role is deleted and recreated with the same name). This is a security feature that prevents role-substitution attacks. The EC2 instance running Vault must have `iam:GetRole` permission on the Lambda role for this lookup to succeed.
+
+---
+
+## Security Design Decisions
+
+This section documents the intentional security choices in `config/vault_auth.tf`. The Vault AWS auth role binding is **deliberately more restrictive than strictly required** for a demo. Each constraint is explained so operators know what can be relaxed for broader use cases.
+
+### STS Assumed-Role ARN Binding (vs. IAM Role ARN)
+
+The Vault auth role uses an **STS assumed-role ARN** as the principal binding:
+
+```
+arn:aws:sts::<account_id>:assumed-role/<role-name>/<function-name>
+```
+
+rather than the simpler **IAM role ARN**:
+
+```
+arn:aws:iam::<account_id>:role/<role-name>
+```
+
+**Why this matters:** When Lambda invokes a function it calls `sts:AssumeRole` and the resulting session name equals the **Lambda function name**. Including the function name in the ARN scopes this Vault role to exactly one Lambda function. Any other Lambda that shares the same IAM execution role cannot authenticate with this Vault role.
+
+**How to relax:** Replace the `bound_iam_principal_arns` value with `data.aws_ssm_parameter.lambda_role_arn.value` (the IAM role ARN). This allows any caller assuming that IAM role to authenticate — useful for multi-function deployments.
+
+### `bound_account_ids`
+
+An explicit AWS account ID restriction adds defense-in-depth. Even if a principal ARN were somehow spoofed or a cross-account trust policy were accidentally added, Vault rejects any request not originating from this specific account.
+
+**How to relax:** Remove the `bound_account_ids` attribute entirely.
+
+### `resolve_aws_unique_ids`
+
+> **Note:** `resolve_aws_unique_ids` is set to `false` in this module because Vault can only resolve **IAM ARNs** (`arn:aws:iam::…`) to internal unique IDs — STS session ARNs (`arn:aws:sts::…`) represent ephemeral sessions and have no stable unique ID. Since this module uses STS assumed-role ARNs for tight function-name scoping, these two controls are mutually exclusive.
+
+When set to `true` (only valid with IAM role ARNs), Vault resolves the principal ARN to its opaque internal unique ID (`AROA…`) and stores that as the binding. If the IAM role is deleted and re-created with the same name, the unique ID changes, breaking the binding automatically — preventing role-shadowing attacks.
+
+**How to enable:** Switch `bound_iam_principal_arns` back to the IAM role ARN (`data.aws_ssm_parameter.lambda_role_arn.value`) and set `resolve_aws_unique_ids = true`. You lose function-name scoping but gain protection against role deletion/recreation attacks.
+
+### Summary Table
+
+| Control | What it restricts | How to relax / enable |
+|---|---|---|
+| STS assumed-role ARN | Scopes to a single Lambda function, not just the IAM role | Use IAM role ARN: `data.aws_ssm_parameter.lambda_role_arn.value` |
+| `bound_account_ids` | Prevents cross-account authentication | Remove the attribute |
+| `resolve_aws_unique_ids` | **Currently `false`** — incompatible with STS ARNs. Enable by switching to IAM role ARN + setting `true` | Set to `true` only after switching to IAM role ARN |
 
 ---
 
@@ -160,6 +250,10 @@ aws ssm get-parameter \
 
 ## Variables
 
+### `init/` Variables
+
+These control the infrastructure deployment.
+
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `aws_region` | `string` | `"us-east-1"` | AWS region to deploy into |
@@ -178,9 +272,24 @@ aws ssm get-parameter \
 | `kms_deletion_window_days` | `number` | `7` | KMS key pending-deletion window (7–30 days) |
 | `tags` | `map(string)` | `{}` | Additional tags to apply to all resources |
 
+### `config/` Variables
+
+These control Vault configuration. In most cases the defaults are correct; only override if you changed `project_name` or `ssm_param_prefix` in `init/`.
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `aws_region` | `string` | `"us-east-1"` | AWS region (must match `init/`) |
+| `project_name` | `string` | `"vault-mongo-demo"` | Project name prefix (must match `init/`) |
+| `ssm_param_prefix` | `string` | `""` | SSM path prefix. Defaults to `/<project_name>` |
+| `vault_addr` | `string` | `""` | Vault address. Defaults to `$VAULT_ADDR` env var — populate via `eval $(../scripts/get-config-vars.sh)` |
+| `vault_token` | `string` | `""` | Vault root token. Defaults to `$VAULT_TOKEN` env var — populate via `eval $(../scripts/get-config-vars.sh)` |
+| `mongo_db_name` | `string` | `"mongoDB_demo"` | MongoDB database name (must match `init/`) |
+
 ---
 
 ## Outputs
+
+### `init/` Outputs
 
 | Name | Description |
 |---|---|
@@ -198,6 +307,17 @@ aws ssm get-parameter \
 | `lambda_function_arn` | Lambda function ARN |
 | `lambda_log_group` | CloudWatch Log Group name |
 | `kms_key_arn` | KMS key ARN (do not delete — required for Vault unseal) |
+
+### `config/` Outputs
+
+| Name | Description |
+|---|---|
+| `aws_auth_backend_path` | Vault AWS auth backend mount path |
+| `aws_auth_role_name` | Vault AWS auth role name |
+| `database_mount_path` | Vault database secrets engine mount path |
+| `database_role_name` | Vault database role name |
+| `lambda_policy_name` | Vault policy name attached to Lambda tokens |
+| `lambda_invoke_test_cmd` | AWS CLI command to invoke the Lambda for a quick test |
 
 ---
 

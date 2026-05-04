@@ -46,12 +46,12 @@
 # This populates lambda_src/node_modules/ before the archive step zips it up.
 resource "null_resource" "lambda_npm_install" {
   triggers = {
-    package_json = filemd5("${path.module}/lambda_src/package.json")
-    index_js     = filemd5("${path.module}/lambda_src/index.js")
+    package_json = filemd5("${path.module}/../lambda_src/package.json")
+    index_js     = filemd5("${path.module}/../lambda_src/index.js")
   }
 
   provisioner "local-exec" {
-    command = "cd ${path.module}/lambda_src && npm install --omit=dev"
+    command = "cd ${path.module}/../lambda_src && npm install --omit=dev"
   }
 }
 
@@ -60,8 +60,8 @@ resource "null_resource" "lambda_npm_install" {
 # only when the code actually changes.
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/lambda_src"
-  output_path = "${path.module}/lambda_src.zip"
+  source_dir  = "${path.module}/../lambda_src"
+  output_path = "${path.module}/../lambda_src.zip"
 
   depends_on = [null_resource.lambda_npm_install]
 }

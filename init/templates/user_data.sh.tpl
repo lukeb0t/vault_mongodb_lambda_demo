@@ -159,58 +159,7 @@ for i in $(seq 1 120); do
   sleep 5
 done
 
-# ── Step 8-9: AWS auth method ─────────────────────────────────────────────────
-curl -sf -X POST "$VAULT_ADDR/v1/sys/auth/aws" \
-  -H "X-Vault-Token: $ROOT_TOKEN" -H "Content-Type: application/json" \
-  -d '{"type":"aws"}'
-
-curl -sf -X POST "$VAULT_ADDR/v1/auth/aws/config/client" \
-  -H "X-Vault-Token: $ROOT_TOKEN" -H "Content-Type: application/json" \
-  -d "$(jq -n --arg r "${aws_region}" '{region:$r}')"
-
-# Step 10: AWS auth role bound to the Lambda IAM role ARN.
-# Vault calls iam:GetRole on the Lambda role to resolve the ARN to a stable
-# role ID (requires iam:GetRole on the EC2 instance role — see iam.tf).
-curl -sf -X POST "$VAULT_ADDR/v1/auth/aws/role/${project_name}-lambda-role" \
-  -H "X-Vault-Token: $ROOT_TOKEN" -H "Content-Type: application/json" \
-  -d "$(jq -n \
-    --arg arn "${lambda_role_arn}" \
-    --arg pol "${project_name}-lambda-policy" \
-    '{auth_type:"iam",bound_iam_principal_arn:[$arn],policies:[$pol],ttl:"1h",max_ttl:"4h"}')"
-
-# ── Step 11-12: Database secrets engine + MongoDB connection ──────────────────
-curl -sf -X POST "$VAULT_ADDR/v1/sys/mounts/database" \
-  -H "X-Vault-Token: $ROOT_TOKEN" -H "Content-Type: application/json" \
-  -d '{"type":"database"}'
-
-# {{username}} / {{password}} are Vault template placeholders (not Terraform/bash).
-curl -sf -X POST "$VAULT_ADDR/v1/database/config/mongodb" \
-  -H "X-Vault-Token: $ROOT_TOKEN" -H "Content-Type: application/json" \
-  -d "$(jq -n \
-    --arg pw "${mongo_vault_password}" \
-    '{plugin_name:"mongodb-database-plugin",allowed_roles:"lambda-mongo-role",
-      connection_url:"mongodb://{{username}}:{{password}}@mongodb:27017/admin",
-      username:"vault_admin",password:$pw}')"
-
-# Step 13: Database role — creates temporary MongoDB users in the admin db
-# with readWrite on mongoDB_demo; credentials expire after TTL.
-curl -sf -X POST "$VAULT_ADDR/v1/database/roles/lambda-mongo-role" \
-  -H "X-Vault-Token: $ROOT_TOKEN" -H "Content-Type: application/json" \
-  -d '{"db_name":"mongodb","creation_statements":["{\"db\":\"admin\",\"roles\":[{\"role\":\"readWrite\",\"db\":\"mongoDB_demo\"}]}"],"default_ttl":"1h","max_ttl":"24h"}'
-
-# ── Step 14: ACL policy ───────────────────────────────────────────────────────
-POLICY='path "database/creds/lambda-mongo-role" { capabilities = ["read"] }
-path "auth/token/renew-self" { capabilities = ["update"] }
-path "auth/token/lookup-self" { capabilities = ["read"] }'
-
-curl -sf -X PUT "$VAULT_ADDR/v1/sys/policies/acl/${project_name}-lambda-policy" \
-  -H "X-Vault-Token: $ROOT_TOKEN" -H "Content-Type: application/json" \
-  -d "$(jq -n --arg p "$POLICY" '{policy:$p}')"
-
-# ── Step 15: Smoke test ───────────────────────────────────────────────────────
-TEST_USER=$(curl -sf "$VAULT_ADDR/v1/database/creds/lambda-mongo-role" \
-  -H "X-Vault-Token: $ROOT_TOKEN" | jq -r '.data.username')
-log "Smoke-test credential: $TEST_USER"
+log "Vault ready — run 'terraform apply' in config/ to complete setup"
 
 log "=== Bootstrap complete ==="
 echo "BOOTSTRAP_COMPLETE" > /opt/vault/bootstrap_complete

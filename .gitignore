@@ -24,3 +24,11 @@ terraform.tfvars
 .vscode/
 *.swp
 .terraform.tfstate.lock.info
+
+# init/ and config/ subdirectory state
+init/.terraform/
+init/.terraform.lock.hcl
+init/terraform.tfstate.*.backup
+config/.terraform/
+config/.terraform.lock.hcl
+config/terraform.tfstate*
