@@ -1,0 +1,25 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.d/
+*.tfplan
+override.tf
+override.tf.json
+
+# Lambda build artifacts
+lambda_src/node_modules/
+lambda_src.zip
+
+# Local secrets / overrides
+terraform.tfvars
+*.auto.tfvars
+.env
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+*.swp

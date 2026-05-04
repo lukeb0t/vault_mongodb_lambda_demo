@@ -1,0 +1,12 @@
+{
+  "name": "vault-mongo-demo-lambda",
+  "version": "1.0.0",
+  "description": "Demo Lambda: authenticates to Vault via the Lambda Extension (AWS auth) and reads/writes MongoDB using dynamic credentials from the database secrets engine.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0"
+  }
+}
