@@ -12,8 +12,6 @@ die() { log "ERROR: $*"; exit 1; }
 
 log "=== Bootstrap start ==="
 
-log "=== Bootstrap start ==="
-
 # ── Step 1: System packages + Docker ─────────────────────────────────────────
 log "Installing packages..."
 dnf update -y && dnf install -y docker jq ec2-instance-connect
@@ -153,11 +151,11 @@ aws ssm put-parameter --region "${aws_region}" \
   --name "${ssm_param_prefix}/init-output" --value "$INIT_RESPONSE" \
   --type SecureString --overwrite
 
-log "Vault initialised; waiting for KMS unseal..."
-for i in $(seq 1 30); do
+log "Vault initialised; waiting for KMS unseal (up to 10 min)..."
+for i in $(seq 1 120); do
   SEALED=$(curl -s "$VAULT_ADDR/v1/sys/health" | jq -r '.sealed // true')
-  [ "$SEALED" = "false" ] && log "Vault unsealed" && break
-  [ "$i" -eq 30 ] && die "Vault unseal timeout"
+  [ "$SEALED" = "false" ] && log "Vault unsealed after $((i*5))s" && break
+  [ "$i" -eq 120 ] && die "Vault unseal timeout"
   sleep 5
 done
 
