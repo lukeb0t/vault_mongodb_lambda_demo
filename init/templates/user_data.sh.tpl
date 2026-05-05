@@ -69,13 +69,17 @@ docker exec mongodb mongosh \
   "
 
 # ── Step 5: mongo-express (web UI on :8081) ───────────────────────────────────
+# Basic auth is enabled — credentials are stored in SSM at
+# ${ssm_param_prefix}/mongo-express-password (username: ${mongo_express_username}).
 docker run -d \
   --name mongo-express --network vault-demo-net --restart unless-stopped \
   -p 8081:8081 \
   -e ME_CONFIG_MONGODB_ADMINUSERNAME=admin \
   -e ME_CONFIG_MONGODB_ADMINPASSWORD="${mongo_admin_password}" \
   -e ME_CONFIG_MONGODB_URL="mongodb://admin:${mongo_admin_password}@mongodb:27017/" \
-  -e ME_CONFIG_BASICAUTH=false \
+  -e ME_CONFIG_BASICAUTH=true \
+  -e ME_CONFIG_BASICAUTH_USERNAME="${mongo_express_username}" \
+  -e ME_CONFIG_BASICAUTH_PASSWORD="${mongo_express_password}" \
   mongo-express:latest
 
 # ── Step 6: Vault config + start ──────────────────────────────────────────────

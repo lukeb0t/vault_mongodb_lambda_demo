@@ -36,15 +36,17 @@ resource "aws_instance" "vault_mongo" {
   # Render the bootstrap script, substituting Terraform values for template
   # variables.  The rendered script runs once as root at first boot.
   user_data = templatefile("${path.module}/templates/user_data.sh.tpl", {
-    aws_region           = var.aws_region
-    kms_key_id           = aws_kms_key.vault_unseal.key_id
-    mongo_admin_password = random_password.mongo_admin.result
-    mongo_vault_password = random_password.mongo_vault.result
+    aws_region                = var.aws_region
+    kms_key_id                = aws_kms_key.vault_unseal.key_id
+    mongo_admin_password      = random_password.mongo_admin.result
+    mongo_vault_password      = random_password.mongo_vault.result
+    mongo_express_username    = var.mongo_express_username
+    mongo_express_password    = random_password.mongo_express.result
     # Lambda role ARN is bound in the Vault AWS auth role so only Lambdas
     # running under this specific IAM role can authenticate to Vault.
-    lambda_role_arn      = aws_iam_role.lambda.arn
-    ssm_param_prefix     = local.ssm_param_prefix
-    project_name         = var.project_name
+    lambda_role_arn           = aws_iam_role.lambda.arn
+    ssm_param_prefix          = local.ssm_param_prefix
+    project_name              = var.project_name
   })
 
   # Ensure the IGW and public route table are ready before this instance

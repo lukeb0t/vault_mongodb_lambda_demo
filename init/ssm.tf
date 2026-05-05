@@ -44,3 +44,16 @@ resource "aws_ssm_parameter" "lambda_role_arn" {
     Name = "${var.project_name}-lambda-role-arn"
   }
 }
+
+# mongo-express basic auth password — stored in SSM so it can be retrieved
+# without SSHing into the EC2 instance.
+resource "aws_ssm_parameter" "mongo_express_password" {
+  name        = "${local.ssm_param_prefix}/mongo-express-password"
+  description = "Password for the mongo-express web UI basic auth (username: ${var.mongo_express_username})."
+  type        = "SecureString"
+  value       = random_password.mongo_express.result
+
+  tags = {
+    Name = "${var.project_name}-mongo-express-password"
+  }
+}

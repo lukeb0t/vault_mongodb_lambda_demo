@@ -97,3 +97,10 @@ resource "random_password" "mongo_vault" {
   length  = 20
   special = false
 }
+
+# Password for the mongo-express web UI basic auth.
+# Username is controlled by var.mongo_express_username (default: "admin").
+resource "random_password" "mongo_express" {
+  length  = 20
+  special = false
+}

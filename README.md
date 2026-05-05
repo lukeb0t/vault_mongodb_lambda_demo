@@ -41,7 +41,6 @@ An AWS Lambda function authenticates to Vault using the **Vault Lambda Extension
 - AWS CLI v2 with credentials configured (`aws sts get-caller-identity` should succeed)
 - Docker (for the Lambda `npm install` packaging step — runs locally via `null_resource`)
 - Node.js / npm (for Lambda dependency packaging)
-- `gh` CLI (optional — only needed to create the GitHub repo)
 
 The AWS identity running Terraform needs permissions to create: VPC, EC2, IAM roles, Lambda, KMS, SSM parameters, CloudWatch, EventBridge, and EC2 Instance Connect Endpoint resources.
 
@@ -225,17 +224,27 @@ aws ec2-instance-connect ssh \
 
 ## Web UIs
 
-| Service | URL | Notes |
+| Service | URL | Credentials |
 |---|---|---|
-| Vault UI | `http://<PUBLIC_IP>:8200/ui` | Sign in with root token from SSM |
-| mongo-express | `http://<PUBLIC_IP>:8081` | No credentials required (demo mode) |
+| Vault UI | `http://<PUBLIC_IP>:8200/ui` | Root token from SSM (see below) |
+| mongo-express | `http://<PUBLIC_IP>:8081` | Username: `admin` (or `var.mongo_express_username`), password from SSM |
 
 Access is controlled by the `vault_ui_cidr` variable (default: `0.0.0.0/0`). Restrict to your IP for security.
 
-Retrieve the root token:
+Retrieve the Vault root token:
 ```bash
 aws ssm get-parameter \
   --name '/vault-mongo-demo/root-token' \
+  --with-decryption \
+  --region us-east-1 \
+  --query Parameter.Value \
+  --output text
+```
+
+Retrieve the mongo-express password:
+```bash
+aws ssm get-parameter \
+  --name '/vault-mongo-demo/mongo-express-password' \
   --with-decryption \
   --region us-east-1 \
   --query Parameter.Value \
@@ -262,6 +271,7 @@ These control the infrastructure deployment.
 | `ec2_instance_type` | `string` | `"t3.medium"` | EC2 instance type for the Vault + MongoDB server |
 | `ec2_ami_id` | `string` | `""` | Custom AMI ID. Leave empty to use the latest Amazon Linux 2023 |
 | `vault_ui_cidr` | `string` | `"0.0.0.0/0"` | CIDR allowed to access Vault UI (:8200) and mongo-express (:8081) |
+| `mongo_express_username` | `string` | `"admin"` | mongo-express basic auth username |
 | `mongo_admin_password` | `string` | `"Admin1234!"` | MongoDB root password (**change in production**) |
 | `mongo_vault_password` | `string` | `"Vault1234!"` | MongoDB vault_admin service account password |
 | `lambda_schedule_expression` | `string` | `"rate(5 minutes)"` | EventBridge schedule for the demo Lambda |
@@ -408,7 +418,6 @@ This module is designed for **demonstration purposes**. Before using in a shared
 - Set `vault_ui_cidr` to your specific IP range — the default `0.0.0.0/0` exposes ports 8200 and 8081 to the internet.
 - Replace `mongo_admin_password` and `mongo_vault_password` with strong, unique values managed by a secrets manager.
 - Enable TLS on Vault (`tls_disable = 0` in `vault.hcl`) and use a valid certificate.
-- Enable mongo-express basic authentication.
 - Rotate or revoke the Vault root token after initial setup.
 - Consider enabling Vault audit logging.
 - The EC2 instance does not use a key pair — access is via EICE only. Ensure EICE access is restricted to authorized IAM identities.

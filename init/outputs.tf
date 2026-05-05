@@ -30,8 +30,13 @@ output "vault_ui_url" {
 }
 
 output "mongo_express_url" {
-  description = "mongo-express web UI URL. A browser-based MongoDB client — no credentials required (basic auth disabled for demo). Available ~5 minutes after apply."
+  description = "mongo-express web UI URL. Basic auth is enabled — retrieve credentials from SSM using mongo_express_credentials_cmd output."
   value       = "http://${aws_instance.vault_mongo.public_ip}:8081"
+}
+
+output "mongo_express_credentials_cmd" {
+  description = "AWS CLI command to retrieve the mongo-express basic auth password from SSM. Username is set via var.mongo_express_username (default: admin)."
+  value       = "aws ssm get-parameter --name '${local.ssm_param_prefix}/mongo-express-password' --with-decryption --region ${var.aws_region} --query Parameter.Value --output text"
 }
 
 # ── SSH ───────────────────────────────────────────────────────────────────────
