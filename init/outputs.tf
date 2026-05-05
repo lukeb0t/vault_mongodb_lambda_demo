@@ -51,6 +51,18 @@ output "mongo_express_password" {
   sensitive   = true
 }
 
+output "mongo_admin_password" {
+  description = "MongoDB root admin password (auto-generated). Retrieve with: terraform output -raw mongo_admin_password"
+  value       = random_password.mongo_admin.result
+  sensitive   = true
+}
+
+output "mongo_vault_password" {
+  description = "MongoDB vault_admin service account password (auto-generated). Retrieve with: terraform output -raw mongo_vault_password"
+  value       = random_password.mongo_vault.result
+  sensitive   = true
+}
+
 # ── SSH ───────────────────────────────────────────────────────────────────────
 
 output "ssh_command" {

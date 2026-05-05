@@ -267,8 +267,6 @@ These control the infrastructure deployment.
 | `ec2_ami_id` | `string` | `""` | Custom AMI ID. Leave empty to use the latest Amazon Linux 2023 |
 | `vault_ui_cidr` | `string` | `"0.0.0.0/0"` | CIDR allowed to access Vault UI (:8200) and mongo-express (:8081) |
 | `mongo_express_username` | `string` | `"mongo_demo_admin"` | mongo-express basic auth username |
-| `mongo_admin_password` | `string` | `"Admin1234!"` | MongoDB root password (**change in production**) |
-| `mongo_vault_password` | `string` | `"Vault1234!"` | MongoDB vault_admin service account password |
 | `lambda_schedule_expression` | `string` | `"rate(5 minutes)"` | EventBridge schedule for the demo Lambda |
 | `kms_deletion_window_days` | `number` | `7` | KMS key pending-deletion window (7–30 days) |
 | `tags` | `map(string)` | `{}` | Additional tags to apply to all resources |
@@ -300,7 +298,9 @@ These control Vault configuration. In most cases the defaults are correct; only 
 | `vault_ui_url` | Vault web UI URL |
 | `mongo_express_url` | mongo-express web UI URL (basic auth enabled) |
 | `mongo_express_username` | mongo-express login username |
-| `mongo_express_password` | mongo-express login password (sensitive — run `terraform output -raw mongo_express_password`) |
+| `mongo_express_password` | mongo-express login password (sensitive — `terraform output -raw mongo_express_password`) |
+| `mongo_admin_password` | MongoDB root admin password (sensitive — `terraform output -raw mongo_admin_password`) |
+| `mongo_vault_password` | MongoDB vault_admin service account password (sensitive — `terraform output -raw mongo_vault_password`) |
 | `ssh_command` | Full `aws ec2-instance-connect ssh` command |
 | `vault_address` | Vault API address (VPC-internal) |
 | `vault_root_token_ssm_path` | SSM path for the Vault root token |
@@ -413,7 +413,6 @@ terraform destroy
 This module is designed for **demonstration purposes**. Before using in a shared or production environment:
 
 - Set `vault_ui_cidr` to your specific IP range — the default `0.0.0.0/0` exposes ports 8200 and 8081 to the internet.
-- Replace `mongo_admin_password` and `mongo_vault_password` with strong, unique values managed by a secrets manager.
 - Enable TLS on Vault (`tls_disable = 0` in `vault.hcl`) and use a valid certificate.
 - Rotate or revoke the Vault root token after initial setup.
 - Consider enabling Vault audit logging.
