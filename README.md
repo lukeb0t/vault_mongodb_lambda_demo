@@ -57,7 +57,6 @@ git clone https://github.com/lukeb0t/vault_mongodb_lambda_demo.git
 cd vault_mongodb_lambda_demo/init
 
 # Review terraform.tfvars before deploying — defaults work out of the box
-# but you should at minimum restrict vault_ui_cidr to your IP.
 
 # Deploy infrastructure (~5 minutes; EC2 bootstrap runs in the background)
 terraform init
