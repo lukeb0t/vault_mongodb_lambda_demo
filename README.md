@@ -115,12 +115,6 @@ aws lambda invoke \
 ### Accessing Demo Resources
 
 ```bash
-# Open the Vault UI (sign in with root token from SSM):
-cd init && echo "$(terraform output -raw vault_ui_url)"
-
-# Open mongo-express:
-echo "$(terraform output -raw mongo_express_url)"
-
 # SSH into EC2 (no keypair needed — uses EICE):
 $(terraform output -raw ssh_command)
 
