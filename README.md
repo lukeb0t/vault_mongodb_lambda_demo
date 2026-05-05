@@ -56,8 +56,9 @@ Deployment is a **two-step process**: `init/` creates infrastructure and bootstr
 git clone https://github.com/lukeb0t/vault_mongodb_lambda_demo.git
 cd vault_mongodb_lambda_demo/init
 
-# terraform.tfvars is included — edit it to change region, restrict
-# vault_ui_cidr to your IP, or override any other defaults.
+# Copy the included example tfvars and edit as needed
+# (change region, restrict vault_ui_cidr to your IP, etc.)
+cp terraform.tfvars.example terraform.tfvars
 
 # Deploy infrastructure (~5 minutes; EC2 bootstrap runs in the background)
 terraform init
@@ -83,6 +84,9 @@ The `config/` run uses the Vault provider to configure auth, the database secret
 
 ```bash
 cd ../config
+
+# Copy the included example tfvars (no changes needed for a default deploy)
+cp terraform.tfvars.example terraform.tfvars
 
 # Fetch Vault address + root token from SSM and export them as env vars.
 # The Vault provider reads VAULT_ADDR and VAULT_TOKEN automatically.
