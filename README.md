@@ -168,9 +168,9 @@ Other Vault auth methods (Kubernetes, AppRole, TLS certificates, etc.) can be co
 
 ### Why `iam:GetRole` is Required
 
-When creating a Vault AWS auth role with `bound_iam_principal_arn`, Vault resolves the role ARN to its unique **Role ID** (an immutable identifier that changes if the role is deleted and recreated with the same name). This is a security feature that prevents role-substitution attacks. The EC2 instance running Vault must have `iam:GetRole` permission on the Lambda role for this lookup to succeed.
+When creating a Vault AWS auth role with `bound_iam_principal_arn`, Vault resolves the role ARN to its unique **Role ID** (an immutable identifier that changes if the role is deleted and recreated with the same name). This is a security feature that prevents role-substitution attacks. Vault makes this lookup by calling `iam:GetRole` using the credentials of the **EC2 instance's IAM role** (`vault-mongo-demo-ec2-role`) — the permission is granted to that role in `init/iam.tf`, not to the instance itself.
 
-### Principal Binding — IAM Role ARN (not STS Assumed-Role ARN)
+### Principal Binding — IAM Role ARN
 
 The Vault auth role uses the **IAM role ARN** as the principal binding:
 
