@@ -168,6 +168,8 @@ The Vault Lambda Extension supports two run modes, configured via the `VAULT_RUN
 - You want the simplest integration — no Vault API calls in function code, just read a file
 - You're adding Vault to an existing Lambda with minimal code changes
 
+> **This demo uses proxy mode:** 
+
 ---
 
 ## Vault AWS Auth Deep Dive
