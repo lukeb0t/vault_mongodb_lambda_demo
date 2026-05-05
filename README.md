@@ -258,18 +258,15 @@ These control the infrastructure deployment.
 |---|---|---|---|
 | `aws_region` | `string` | `"us-east-1"` | AWS region to deploy into |
 | `project_name` | `string` | `"vault-mongo-demo"` | Prefix for all resource names and tags |
-| `environment` | `string` | `"demo"` | Environment tag applied to all resources |
 | `vpc_cidr` | `string` | `"10.0.0.0/16"` | CIDR block for the new VPC |
 | `vpc_id` | `string` | `""` | Bring-your-own VPC ID. Leave empty to create a new VPC |
-| `public_subnet_id` | `string` | `""` | Bring-your-own public subnet for the EC2 instance |
+| `public_subnet_ids` | `list(string)` | `[]` | Bring-your-own public subnet for the EC2 instance |
 | `private_subnet_ids` | `list(string)` | `[]` | Bring-your-own private subnets for Lambda |
 | `ec2_instance_type` | `string` | `"t3.medium"` | EC2 instance type for the Vault + MongoDB server |
-| `ec2_ami_id` | `string` | `""` | Custom AMI ID. Leave empty to use the latest Amazon Linux 2023 |
 | `vault_ui_cidr` | `string` | `"0.0.0.0/0"` | CIDR allowed to access Vault UI (:8200) and mongo-express (:8081) |
 | `mongo_express_username` | `string` | `"mongo_demo_admin"` | mongo-express basic auth username |
 | `lambda_schedule_expression` | `string` | `"rate(5 minutes)"` | EventBridge schedule for the demo Lambda |
-| `kms_deletion_window_days` | `number` | `7` | KMS key pending-deletion window (7–30 days) |
-| `tags` | `map(string)` | `{}` | Additional tags to apply to all resources |
+| `vault_lambda_extension_layer_arn` | `string` | `""` | Override the Vault Lambda Extension layer ARN. Leave empty to use the regional default |
 
 ### `config/` Variables
 
