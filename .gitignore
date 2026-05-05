@@ -13,7 +13,6 @@ lambda_src/node_modules/
 lambda_src.zip
 
 # Local secrets / overrides
-terraform.tfvars
 *.auto.tfvars
 .env
 
