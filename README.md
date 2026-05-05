@@ -99,7 +99,7 @@ terraform init
 terraform apply
 ```
 
-### Verify the Demo
+### Demo the Lambda + Vault + MongoDB Integration
 
 ```bash
 # Manually trigger the Lambda (it also runs automatically every 5 minutes):
@@ -111,6 +111,15 @@ aws lambda invoke \
 # Expected output:
 # {"success":true,"readBackVerified":true,"vaultDynamicUser":"v-aws-vault-mongo-lambda-mongo-ro-..."}
 ```
+
+**Each time the lambda is invoked, a new MongoDB username and password are vended to the Lambda with a 1 hour TTL.**
+
+# File Mode vs Proxy Mode
+In this demo, the Vault lambda extention is operating in "proxy" mode - meaning the lambda extention is only handling authentication and its up to the main lambda function to call whatever secrets it needs during its runtime. It can call / renew / etc anything it needs from vault during its execution time. 
+
+Contrasted with file mode, where the Vault extention is handling both authentication and grabbing some set of secrets placing them in a file for the main lambda function to consume. This is a one time action performed at the time of lambda init only. 
+
+
 
 ### Accessing Demo Resources
 
@@ -148,6 +157,27 @@ Lambda invoked
             ├─ Reads document back to verify
             └─ Returns { success: true, vaultDynamicUser: "v-...", readBackVerified: true }
 ```
+
+### Vault Lambda Extension — Proxy Mode vs File Mode
+
+The Vault Lambda Extension supports two run modes, configured via the `VAULT_RUN_MODE` environment variable. Full reference: [HashiCorp Vault Lambda Extension docs](https://developer.hashicorp.com/vault/docs/platform/aws/lambda-extension).
+
+| Mode | `VAULT_RUN_MODE` | How it works |
+|---|---|---|
+| **Proxy** *(this demo)* | `proxy` | Extension runs a local HTTP proxy on `localhost:8200`. Function code makes normal Vault API calls; the extension injects the auth token and forwards requests to the real Vault server. |
+| **File** | `file` | Extension reads one or more secret paths at cold start and writes the JSON response(s) to disk (e.g. `/tmp/vault/secret.json`). Function code reads from the file. |
+
+**Use proxy mode when:**
+- You need **dynamic secrets** (database credentials, PKI certs) that must be requested fresh per invocation
+- You need access to the full Vault HTTP API from function code (lease info, TTLs, etc.)
+- Your function makes calls to multiple different Vault paths
+
+**Use file mode when:**
+- You need **static or long-lived secrets** (API keys, config values) that don't change per invocation
+- You want the simplest integration — no Vault API calls in function code, just read a file
+- You're adding Vault to an existing Lambda with minimal code changes
+
+> **Why this demo uses proxy mode:** Dynamic MongoDB credentials must be requested at invocation time — Vault creates a new temporary MongoDB user on each call. File mode writes secrets once at cold start, which would not work for per-invocation dynamic credentials.
 
 ---
 
