@@ -236,26 +236,8 @@ aws ec2-instance-connect ssh \
 
 | Service | URL | Credentials |
 |---|---|---|
-| Vault UI | `http://<PUBLIC_IP>:8200/ui` | Root token from SSM (see below) |
+| Vault UI | `http://<PUBLIC_IP>:8200/ui` | Root token from SSM (see step 3)|
 | mongo-express | `http://<PUBLIC_IP>:8081` | `terraform output mongo_express_username` / `terraform output -raw mongo_express_password` |
-
-Access is controlled by the `vault_ui_cidr` variable (default: `0.0.0.0/0`). This demo allows for restricted IP access to your remote IP.
-*Never expose a production Vault to the internet...*
-
-Retrieve the Vault root token:
-```bash
-aws ssm get-parameter \
-  --name '/vault-mongo-demo/root-token' \
-  --with-decryption \
-  --region us-east-1 \
-  --query Parameter.Value \
-  --output text
-```
-
-Retrieve the mongo-express password:
-```bash
-terraform output -raw mongo_express_password
-```
 
 ---
 
