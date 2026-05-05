@@ -56,10 +56,8 @@ Deployment is a **two-step process**: `init/` creates infrastructure and bootstr
 git clone https://github.com/lukeb0t/vault_mongodb_lambda_demo.git
 cd vault_mongodb_lambda_demo/init
 
-# (Optional) Create a terraform.tfvars — all variables have sensible defaults
-cat > terraform.tfvars <<VARS
-aws_region = "us-east-1"
-VARS
+# terraform.tfvars is included — edit it to change region, restrict
+# vault_ui_cidr to your IP, or override any other defaults.
 
 # Deploy infrastructure (~5 minutes; EC2 bootstrap runs in the background)
 terraform init
