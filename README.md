@@ -161,15 +161,12 @@ The Vault Lambda Extension supports two run modes, configured via the `VAULT_RUN
 | **File** | `file` | Extension reads one or more secret paths at cold start and writes the JSON response(s) to disk (e.g. `/tmp/vault/secret.json`). Function code reads from the file. |
 
 **Use proxy mode when:**
-- You need **dynamic secrets** (database credentials, PKI certs) that must be requested fresh per invocation
 - You need access to the full Vault HTTP API from function code (lease info, TTLs, etc.)
 - Your function makes calls to multiple different Vault paths
 
 **Use file mode when:**
-- You need secrets that are stable across warm invocations — the extension writes the secret at cold start, manages lease renewal in the background, and your function just reads from the file on each invocation
 - You want the simplest integration — no Vault API calls in function code, just read a file
 - You're adding Vault to an existing Lambda with minimal code changes
-
 
 ---
 
