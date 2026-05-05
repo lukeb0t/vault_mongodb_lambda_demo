@@ -114,13 +114,6 @@ aws lambda invoke \
 
 **Each time the lambda is invoked, a new MongoDB username and password are vended to the Lambda with a 1 hour TTL.**
 
-# File Mode vs Proxy Mode
-In this demo, the Vault lambda extention is operating in "proxy" mode - meaning the lambda extention is only handling authentication and its up to the main lambda function to call whatever secrets it needs during its runtime. It can call / renew / etc anything it needs from vault during its execution time. 
-
-Contrasted with file mode, where the Vault extention is handling both authentication and grabbing some set of secrets placing them in a file for the main lambda function to consume. This is a one time action performed at the time of lambda init only. 
-
-
-
 ### Accessing Demo Resources
 
 ```bash
@@ -173,7 +166,7 @@ The Vault Lambda Extension supports two run modes, configured via the `VAULT_RUN
 - Your function makes calls to multiple different Vault paths
 
 **Use file mode when:**
-- You need **static or long-lived secrets** (API keys, config values) that don't change per invocation
+- You need secrets that are stable across warm invocations — the extension writes the secret at cold start, manages lease renewal in the background, and your function just reads from the file on each invocation
 - You want the simplest integration — no Vault API calls in function code, just read a file
 - You're adding Vault to an existing Lambda with minimal code changes
 
