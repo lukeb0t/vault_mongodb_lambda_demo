@@ -31,7 +31,7 @@ output "ec2_private_ip" {
 # ── Web UIs ───────────────────────────────────────────────────────────────────
 
 output "vault_ui_url" {
-  description = "Vault web UI URL. Open in a browser and sign in with the root token retrieved via retrieve_vault_token_cmd. Available ~5 minutes after apply (bootstrap must complete first)."
+  description = "Vault web UI URL. The URL is available immediately after apply — the Vault service itself takes ~2-5 minutes to start (bootstrap must complete first). Sign in with the root token via retrieve_vault_token_cmd."
   value       = "http://${aws_instance.vault_mongo.public_ip}:8200/ui"
 }
 
