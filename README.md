@@ -151,7 +151,7 @@ Lambda invoked
 
 ---
 
-## Security Design Decisions
+## Vault AWS Auth Deep Dive
 
 ### Why `iam:GetRole` is Required
 
