@@ -1,6 +1,6 @@
 # Vault + MongoDB + Lambda Demo
 
-A Terraform module that deploys a complete, self-contained demonstration of HashiCorp Vault's dynamic database credentials workflow on AWS.
+A Terraform module that deploys a complete, self-contained demonstration of HashiCorp Vault's MongoDB dynamic database credentials workflow on AWS Lambda.
 
 An AWS Lambda function authenticates to Vault using the **Vault Lambda Extension** (AWS IAM auth), retrieves short-lived MongoDB credentials from Vault's **database secrets engine**, and uses those credentials to read/write documents in a MongoDB collection — proving the full dynamic-secrets pipeline with no hardcoded passwords anywhere.
 
@@ -60,7 +60,7 @@ Review `terraform.tfvars` in both `init/` and `config/` before deploying. If mod
 git clone https://github.com/lukeb0t/vault_mongodb_lambda_demo.git
 cd vault_mongodb_lambda_demo/init
 
-# Deploy infrastructure (~5 minutes; EC2 bootstrap runs in the background)
+# Deploy infrastructure (~7 minutes; EC2 bootstrap runs in the background)
 terraform init
 terraform apply
 
@@ -75,7 +75,7 @@ aws ssm get-parameter \
 
 ### Step 3 — Vault Configuration (`config/`)
 
-The `config/` run uses the Vault provider to configure auth, the database secrets engine, and policies. It reads the Vault address and root token from SSM using a helper script.
+The `config/` run uses the Vault provider to configure auth, the database secrets engine, and policies. It reads the Vault address and root token from environment variables you must export before running terraform init/apply.
 
 ```bash
 cd ../config
@@ -158,7 +158,7 @@ Lambda invoked
 
 ### Why `iam:GetRole` is Required
 
-When creating a Vault AWS auth role with `bound_iam_principal_arn`, Vault resolves the role ARN to its unique **Role ID** (a stable identifier that persists even if the role is deleted and recreated with the same name). This is a security feature that prevents role-substitution attacks. The EC2 instance running Vault must have `iam:GetRole` permission on the Lambda role for this lookup to succeed.
+When creating a Vault AWS auth role with `bound_iam_principal_arn`, Vault resolves the role ARN to its unique **Role ID** (an immutable identifier that changes if the role is deleted and recreated with the same name). This is a security feature that prevents role-substitution attacks. The EC2 instance running Vault must have `iam:GetRole` permission on the Lambda role for this lookup to succeed.
 
 ---
 
@@ -306,11 +306,12 @@ These control Vault configuration. In most cases the defaults are correct; only 
 
 | Name | Description |
 |---|---|
-| `aws_auth_backend_path` | Vault AWS auth backend mount path |
-| `aws_auth_role_name` | Vault AWS auth role name |
-| `database_mount_path` | Vault database secrets engine mount path |
-| `database_role_name` | Vault database role name |
-| `lambda_policy_name` | Vault policy name attached to Lambda tokens |
+| `vault_auth_backend_path` | Vault AWS auth backend mount path |
+| `vault_auth_role_name` | Vault AWS auth role name |
+| `vault_database_mount_path` | Vault database secrets engine mount path |
+| `vault_database_role_name` | Vault database role name |
+| `vault_policy_name` | Vault policy name attached to Lambda tokens |
+| `vault_db_creds_path` | Vault API path for dynamic MongoDB credentials |
 | `lambda_invoke_test_cmd` | AWS CLI command to invoke the Lambda for a quick test |
 
 ---
