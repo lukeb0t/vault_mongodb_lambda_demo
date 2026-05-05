@@ -7,9 +7,8 @@
 #
 # Authentication:
 #   The Vault provider reads VAULT_ADDR and VAULT_TOKEN from environment
-#   variables by default. Use scripts/get-config-vars.sh to populate them
-#   from SSM Parameter Store, or pass var.vault_addr / var.vault_token
-#   explicitly.
+#   variables by default. Export them from SSM before running apply
+#   (see README Step 3), or pass var.vault_addr / var.vault_token explicitly.
 # =============================================================================
 
 terraform {
@@ -45,8 +44,9 @@ provider "aws" {
 #   1. var.vault_addr / var.vault_token if explicitly set, OR
 #   2. VAULT_ADDR / VAULT_TOKEN environment variables (standard Vault workflow)
 #
-# Use scripts/get-config-vars.sh to load these from SSM:
-#   eval $(../scripts/get-config-vars.sh)
+# Export these before running terraform apply (see README Step 3):
+#   export VAULT_ADDR=$(aws ssm get-parameter --name '/vault-mongo-demo/vault-addr' ...)
+#   export VAULT_TOKEN=$(aws ssm get-parameter --name '/vault-mongo-demo/root-token' ...)
 provider "vault" {
   # If variables are empty strings, null is passed and the provider falls back
   # to the VAULT_ADDR / VAULT_TOKEN environment variables.

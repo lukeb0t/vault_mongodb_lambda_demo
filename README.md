@@ -80,12 +80,17 @@ The `config/` run uses the Vault provider to configure auth, the database secret
 ```bash
 cd ../config
 
-# Fetch Vault address + root token from SSM and export them as env vars.
-# The Vault provider reads VAULT_ADDR and VAULT_TOKEN automatically.
-eval $(../scripts/get-config-vars.sh)
+# Fetch Vault address + root token from SSM and export for the Vault provider
+export VAULT_ADDR=$(aws ssm get-parameter \
+  --name '/vault-mongo-demo/vault-addr' \
+  --region us-east-1 \
+  --query Parameter.Value --output text)
 
-# Verify the values were set:
-echo "VAULT_ADDR=$VAULT_ADDR"
+export VAULT_TOKEN=$(aws ssm get-parameter \
+  --name '/vault-mongo-demo/root-token' \
+  --with-decryption \
+  --region us-east-1 \
+  --query Parameter.Value --output text)
 
 # Run the config init and apply
 terraform init
@@ -277,8 +282,8 @@ These control Vault configuration. In most cases the defaults are correct; only 
 | `aws_region` | `string` | `"us-east-1"` | AWS region (must match `init/`) |
 | `project_name` | `string` | `"vault-mongo-demo"` | Project name prefix (must match `init/`) |
 | `ssm_param_prefix` | `string` | `""` | SSM path prefix. Defaults to `/<project_name>` |
-| `vault_addr` | `string` | `""` | Vault address. Defaults to `$VAULT_ADDR` env var — populate via `eval $(../scripts/get-config-vars.sh)` |
-| `vault_token` | `string` | `""` | Vault root token. Defaults to `$VAULT_TOKEN` env var — populate via `eval $(../scripts/get-config-vars.sh)` |
+| `vault_addr` | `string` | `""` | Vault address. Defaults to `$VAULT_ADDR` env var — export before apply (see Step 3) |
+| `vault_token` | `string` | `""` | Vault root token. Defaults to `$VAULT_TOKEN` env var — export before apply (see Step 3) |
 | `mongo_db_name` | `string` | `"mongoDB_demo"` | MongoDB database name (must match `init/`) |
 
 ---

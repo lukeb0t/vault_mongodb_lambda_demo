@@ -27,8 +27,8 @@ variable "ssm_param_prefix" {
 variable "vault_addr" {
   description = <<-EOT
     Vault server address (e.g. http://1.2.3.4:8200). If empty (default), the
-    Vault provider reads the VAULT_ADDR environment variable. Populate from
-    SSM by running: eval $(../scripts/get-config-vars.sh)
+    Vault provider reads the VAULT_ADDR environment variable. Export before
+    running terraform apply: export VAULT_ADDR=$(aws ssm get-parameter ...)
   EOT
   type        = string
   default     = ""
@@ -37,8 +37,8 @@ variable "vault_addr" {
 variable "vault_token" {
   description = <<-EOT
     Vault root token for initial configuration. If empty (default), the Vault
-    provider reads the VAULT_TOKEN environment variable. Populate from SSM:
-      eval $(../scripts/get-config-vars.sh)
+    provider reads the VAULT_TOKEN environment variable. Export before running
+    terraform apply: export VAULT_TOKEN=$(aws ssm get-parameter ...)
     For production, replace the root token with a narrowly-scoped service token.
   EOT
   type      = string

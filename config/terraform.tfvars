@@ -1,10 +1,17 @@
 # =============================================================================
 # terraform.tfvars — Default variable overrides for config/
 #
-# VAULT_ADDR and VAULT_TOKEN are sourced from SSM automatically via:
-#   eval $(../scripts/get-config-vars.sh)
+# Export VAULT_ADDR and VAULT_TOKEN from SSM before running terraform apply:
 #
-# Only override these here if you are not using get-config-vars.sh.
+#   export VAULT_ADDR=$(aws ssm get-parameter \
+#     --name '/vault-mongo-demo/vault-addr' --region us-east-1 \
+#     --query Parameter.Value --output text)
+#
+#   export VAULT_TOKEN=$(aws ssm get-parameter \
+#     --name '/vault-mongo-demo/root-token' --with-decryption \
+#     --region us-east-1 --query Parameter.Value --output text)
+#
+# Only set vault_addr / vault_token here to override the env vars above.
 # =============================================================================
 
 aws_region   = "us-east-1"
