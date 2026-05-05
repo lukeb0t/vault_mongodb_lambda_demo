@@ -117,7 +117,7 @@ aws lambda invoke \
 ```bash
 # SSH into EC2 (no keypair needed — uses EICE):
 $(terraform output -raw ssh_command)
-
+```
 
 ---
 
