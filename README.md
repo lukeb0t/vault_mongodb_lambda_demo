@@ -303,7 +303,8 @@ These control Vault configuration. In most cases the defaults are correct; only 
 | `ec2_public_ip` | Public IP of the Vault + MongoDB EC2 instance |
 | `ec2_private_ip` | Private IP (used by Lambda internally) |
 | `vault_ui_url` | Vault web UI URL |
-| `mongo_express_url` | mongo-express web UI URL |
+| `mongo_express_url` | mongo-express web UI URL (basic auth enabled) |
+| `mongo_express_credentials_cmd` | AWS CLI command to retrieve the mongo-express password from SSM |
 | `ssh_command` | Full `aws ec2-instance-connect ssh` command |
 | `vault_address` | Vault API address (VPC-internal) |
 | `vault_root_token_ssm_path` | SSM path for the Vault root token |
