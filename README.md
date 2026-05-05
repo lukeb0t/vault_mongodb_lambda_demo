@@ -155,9 +155,11 @@ Lambda invoked
 
 ### Why `iam:GetRole` is Required
 
-When creating a Vault AWS auth role with `bound_iam_principal_arn`, Vault resolves the role ARN to its unique **Role ID** (an immutable identifier that changes if the role is deleted and recreated with the same name). This is a security feature that prevents role-substitution attacks.
+`bound_iam_principal_arn` is the Vault config field that controls **which AWS identity is allowed to log in to a Vault role**. In this demo it is set to the Lambda execution role ARN — Vault will only issue tokens to callers whose AWS identity resolves to that ARN; everything else is rejected.
 
-Vault makes this lookup by calling `iam:GetRole` using **whatever IAM identity Vault is configured to use**
+Rather than a simple ARN string comparison, Vault resolves the ARN to the role's underlying **Role ID** (`AROA…`) — an immutable identifier that changes if the role is deleted and recreated with the same name. This prevents role-substitution attacks where a deleted role is recreated to silently regain access.
+
+To perform that resolution Vault calls `iam:GetRole` using **whatever IAM identity Vault is configured to use**:
 
 | Vault deployment | IAM identity used for `iam:GetRole` |
 |---|---|
