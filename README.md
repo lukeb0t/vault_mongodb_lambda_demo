@@ -164,8 +164,6 @@ When creating a Vault AWS auth role with `bound_iam_principal_arn`, Vault resolv
 
 ## Security Design Decisions
 
-This section documents the security choices in `config/vault_auth.tf` and the practical constraints discovered during testing.
-
 ### Principal Binding — IAM Role ARN (not STS Assumed-Role ARN)
 
 The Vault auth role uses the **IAM role ARN** as the principal binding:
@@ -174,13 +172,9 @@ The Vault auth role uses the **IAM role ARN** as the principal binding:
 arn:aws:iam::<account_id>:role/<role-name>
 ```
 
-**Why not the STS assumed-role ARN?**
-
-We attempted to use an STS assumed-role ARN (`arn:aws:sts::...:assumed-role/<role>/<function>`) to scope the binding to a single Lambda function by its session name. This does not work in practice. Vault's AWS IAM auth backend always resolves principal ARNs to their underlying IAM entity — STS session ARNs cannot be used as `bound_iam_principal_arns` values, regardless of the `resolve_aws_unique_ids` setting. Vault rejects login attempts with "does not belong to the role".
-
 **Effective scope with the IAM role ARN:** The `vault-mongo-demo-lambda-role` is a dedicated execution role created exclusively for this Lambda function. No other principal in the account has a trust policy allowing it to assume this role, so the binding is effectively single-function scoped in practice.
 
-→ To enforce this architecturally: ensure no other Lambda (or human) can assume `vault-mongo-demo-lambda-role` by auditing the role's trust policy in `init/iam.tf`.
+→ To enforce this architecturally: ensure no other Lambda (or human) can assume `vault-mongo-demo-lambda-role` by auditing the role's trust policy.
 
 ### `bound_account_ids`
 
@@ -196,11 +190,11 @@ Vault resolves the IAM role ARN to its opaque internal unique ID (`AROA…`) and
 
 ### Summary Table
 
-| Control | What it restricts | How to relax |
-|---|---|---|
-| IAM role ARN binding | Scopes to callers assuming `vault-mongo-demo-lambda-role` | Use a different/broader role ARN |
-| `bound_account_ids` | Prevents cross-account authentication | Remove the attribute |
-| `resolve_aws_unique_ids = true` | Breaks binding if IAM role is deleted + recreated | Set to `false` |
+| Control | What it restricts |
+|---|---|
+| IAM role ARN binding | Scopes to callers assuming `vault-mongo-demo-lambda-role` |
+| `bound_account_ids` | Prevents cross-account authentication |
+| `resolve_aws_unique_ids = true` | Breaks binding if IAM role is deleted + recreated |
 
 ---
 
