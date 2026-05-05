@@ -153,24 +153,11 @@ Lambda invoked
 
 ## Security Design Decisions
 
-### AWS Auth Method — IAM Subtype
-
-This demo uses the **`iam` subtype** of Vault's AWS auth method. The Lambda's execution role credentials are used to sign a `GetCallerIdentity` request, which is forwarded to Vault. Vault verifies the signature with AWS STS and matches the caller's IAM identity against the configured role binding — no static credentials required.
-
-Vault's AWS auth method supports two subtypes:
-
-| Subtype | How it authenticates | Typical workload |
-|---|---|---|
-| `iam` *(this demo)* | Signs a `GetCallerIdentity` request with IAM credentials | Lambda, ECS, EC2, any IAM principal |
-| `ec2` | Presents a signed EC2 instance identity document | EC2 instances only |
-
-Other Vault auth methods (Kubernetes, AppRole, TLS certificates, etc.) can be configured in place of AWS auth depending on your workload.
-
 ### Why `iam:GetRole` is Required
 
 When creating a Vault AWS auth role with `bound_iam_principal_arn`, Vault resolves the role ARN to its unique **Role ID** (an immutable identifier that changes if the role is deleted and recreated with the same name). This is a security feature that prevents role-substitution attacks.
 
-Vault makes this lookup by calling `iam:GetRole` using **whatever IAM identity Vault itself is running as** — not the instance. The identity varies by deployment:
+Vault makes this lookup by calling `iam:GetRole` using **whatever IAM identity Vault is configured to use**
 
 | Vault deployment | IAM identity used for `iam:GetRole` |
 |---|---|
@@ -178,7 +165,6 @@ Vault makes this lookup by calling `iam:GetRole` using **whatever IAM identity V
 | ECS / Fargate | ECS task IAM role |
 | EKS | Pod IAM role via IRSA |
 | Non-AWS / on-prem | Static credentials (`access_key` / `secret_key`) on the `vault_aws_auth_backend_client` resource |
-| HCP Vault (managed) | Managed by HashiCorp — no action required |
 
 In this demo the permission is granted to `vault-mongo-demo-ec2-role` in `init/iam.tf`.
 
