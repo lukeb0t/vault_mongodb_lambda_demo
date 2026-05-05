@@ -182,6 +182,16 @@ Vault makes this lookup by calling `iam:GetRole` using **whatever IAM identity V
 
 In this demo the permission is granted to `vault-mongo-demo-ec2-role` in `init/iam.tf`.
 
+> **Running Vault outside AWS?** When Vault has no AWS metadata service to draw credentials from (on-prem, another cloud, local Docker), you must supply static AWS credentials directly on the `vault_aws_auth_backend_client` resource in `config/vault_auth.tf`:
+> ```hcl
+> resource "vault_aws_auth_backend_client" "this" {
+>   backend    = vault_auth_backend.aws.path
+>   access_key = var.vault_aws_access_key   # IAM user with iam:GetRole
+>   secret_key = var.vault_aws_secret_key
+> }
+> ```
+> The IAM user or role those credentials belong to needs `iam:GetRole` on the Lambda role, just like the EC2 instance role does in this demo.
+
 ### Principal Binding — IAM Role ARN
 
 The Vault auth role uses the **IAM role ARN** as the principal binding:
