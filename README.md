@@ -1,6 +1,6 @@
 # Vault + MongoDB + Lambda Demo
 
-Terraform modules that deploy a complete, self-contained demonstration of HashiCorp Vault's (MongoDB) dynamic database credentials and Lambda Vault Layers on AWS.
+Terraform modules that deploy a complete, self-contained demonstration of HashiCorp Vault's (MongoDB) dynamic database credentials and the Vault Lambda extention on AWS.
 
 An AWS Lambda function authenticates to Vault using the **Vault Lambda Extension (proxy mode + IAM Auth)**, retrieves short-lived MongoDB credentials from Vault's **database secrets engine**, and uses those credentials to read/write documents in a MongoDB collection — proving the full dynamic-secrets pipeline with no hardcoded passwords anywhere.
 
