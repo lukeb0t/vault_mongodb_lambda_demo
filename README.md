@@ -118,9 +118,6 @@ aws lambda invoke \
 # SSH into EC2 (no keypair needed — uses EICE):
 $(terraform output -raw ssh_command)
 
-# Retrieve Vault root token:
-$(terraform output -raw retrieve_vault_token_cmd)
-```
 
 ---
 
