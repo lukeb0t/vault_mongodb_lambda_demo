@@ -15,14 +15,14 @@ An AWS Lambda function authenticates to Vault using the **Vault Lambda Extension
                           │          AWS Cloud (us-east-1)       │
                           │                                      │
   Browser ─────── HTTPS ──► EC2 (public subnet)                  │
-  SSH (EICE) ─────────────►  ├─ Vault 1.17 (Docker, :8200)      │
+  SSH (EICE) ─────────────►  ├─ Vault 1.17 (Docker, :8200)       │
                           │  ├─ MongoDB 7   (Docker, :27017)     │
                           │  └─ mongo-express (Docker, :8081)    │
                           │                  ▲                   │
-                          │  Lambda ─────────┘ (VPC-local)      │
+                          │  Lambda ─────────┘ (VPC-local)       │
                           │  (private subnet)                    │
                           │       │                              │
-                          │       └── EventBridge (every 5 min) │
+                          │       └── EventBridge (every 5 min)  │
                           └──────────────────────────────────────┘
 ```
 
