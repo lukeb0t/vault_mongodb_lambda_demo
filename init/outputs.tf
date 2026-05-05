@@ -1,8 +1,14 @@
 # =============================================================================
 # outputs.tf — Module outputs
 #
-# Useful values printed after `terraform apply`.  Sensitive values (tokens,
-# passwords) are stored in SSM Parameter Store rather than in outputs.
+# Useful values printed after `terraform apply`.  Sensitive credentials
+# (mongo-express password) are marked sensitive=true — they show as
+# "(sensitive value)" in the terminal but are retrievable via:
+#   terraform output -raw mongo_express_password
+#
+# The Vault root token is an exception: it is written by the EC2 bootstrap
+# script AFTER apply completes, so it cannot be a Terraform output. Retrieve
+# it with: terraform output -raw retrieve_vault_token_cmd | bash
 # =============================================================================
 
 output "vpc_id" {
@@ -30,13 +36,19 @@ output "vault_ui_url" {
 }
 
 output "mongo_express_url" {
-  description = "mongo-express web UI URL. Basic auth is enabled — retrieve credentials from SSM using mongo_express_credentials_cmd output."
+  description = "mongo-express web UI URL. Basic auth is enabled — sign in with mongo_express_username and mongo_express_password outputs."
   value       = "http://${aws_instance.vault_mongo.public_ip}:8081"
 }
 
-output "mongo_express_credentials_cmd" {
-  description = "AWS CLI command to retrieve the mongo-express basic auth password from SSM. Username is set via var.mongo_express_username (default: admin)."
-  value       = "aws ssm get-parameter --name '${local.ssm_param_prefix}/mongo-express-password' --with-decryption --region ${var.aws_region} --query Parameter.Value --output text"
+output "mongo_express_username" {
+  description = "mongo-express basic auth username."
+  value       = var.mongo_express_username
+}
+
+output "mongo_express_password" {
+  description = "mongo-express basic auth password (auto-generated). Retrieve with: terraform output -raw mongo_express_password"
+  value       = random_password.mongo_express.result
+  sensitive   = true
 }
 
 # ── SSH ───────────────────────────────────────────────────────────────────────

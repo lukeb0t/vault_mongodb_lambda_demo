@@ -227,7 +227,7 @@ aws ec2-instance-connect ssh \
 | Service | URL | Credentials |
 |---|---|---|
 | Vault UI | `http://<PUBLIC_IP>:8200/ui` | Root token from SSM (see below) |
-| mongo-express | `http://<PUBLIC_IP>:8081` | Username: `admin` (or `var.mongo_express_username`), password from SSM |
+| mongo-express | `http://<PUBLIC_IP>:8081` | `terraform output mongo_express_username` / `terraform output -raw mongo_express_password` |
 
 Access is controlled by the `vault_ui_cidr` variable (default: `0.0.0.0/0`). Restrict to your IP for security.
 
@@ -243,12 +243,7 @@ aws ssm get-parameter \
 
 Retrieve the mongo-express password:
 ```bash
-aws ssm get-parameter \
-  --name '/vault-mongo-demo/mongo-express-password' \
-  --with-decryption \
-  --region us-east-1 \
-  --query Parameter.Value \
-  --output text
+terraform output -raw mongo_express_password
 ```
 
 ---
@@ -271,7 +266,7 @@ These control the infrastructure deployment.
 | `ec2_instance_type` | `string` | `"t3.medium"` | EC2 instance type for the Vault + MongoDB server |
 | `ec2_ami_id` | `string` | `""` | Custom AMI ID. Leave empty to use the latest Amazon Linux 2023 |
 | `vault_ui_cidr` | `string` | `"0.0.0.0/0"` | CIDR allowed to access Vault UI (:8200) and mongo-express (:8081) |
-| `mongo_express_username` | `string` | `"admin"` | mongo-express basic auth username |
+| `mongo_express_username` | `string` | `"mongo_demo_admin"` | mongo-express basic auth username |
 | `mongo_admin_password` | `string` | `"Admin1234!"` | MongoDB root password (**change in production**) |
 | `mongo_vault_password` | `string` | `"Vault1234!"` | MongoDB vault_admin service account password |
 | `lambda_schedule_expression` | `string` | `"rate(5 minutes)"` | EventBridge schedule for the demo Lambda |
@@ -304,7 +299,8 @@ These control Vault configuration. In most cases the defaults are correct; only 
 | `ec2_private_ip` | Private IP (used by Lambda internally) |
 | `vault_ui_url` | Vault web UI URL |
 | `mongo_express_url` | mongo-express web UI URL (basic auth enabled) |
-| `mongo_express_credentials_cmd` | AWS CLI command to retrieve the mongo-express password from SSM |
+| `mongo_express_username` | mongo-express login username |
+| `mongo_express_password` | mongo-express login password (sensitive — run `terraform output -raw mongo_express_password`) |
 | `ssh_command` | Full `aws ec2-instance-connect ssh` command |
 | `vault_address` | Vault API address (VPC-internal) |
 | `vault_root_token_ssm_path` | SSM path for the Vault root token |

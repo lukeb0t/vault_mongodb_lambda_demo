@@ -75,7 +75,7 @@ variable "vault_ui_cidr" {
 variable "mongo_express_username" {
   description = "Username for the mongo-express web UI basic auth. Defaults to 'admin'."
   type        = string
-  default     = "admin"
+  default     = "mongo_demo_admin"
 }
 
 # ── Lambda ────────────────────────────────────────────────────────────────────
