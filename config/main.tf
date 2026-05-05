@@ -47,6 +47,7 @@ provider "aws" {
 # Export these before running terraform apply (see README Step 3):
 #   export VAULT_ADDR=$(aws ssm get-parameter --name '/vault-mongo-demo/vault-addr' ...)
 #   export VAULT_TOKEN=$(aws ssm get-parameter --name '/vault-mongo-demo/root-token' ...)
+
 provider "vault" {
   # If variables are empty strings, null is passed and the provider falls back
   # to the VAULT_ADDR / VAULT_TOKEN environment variables.
