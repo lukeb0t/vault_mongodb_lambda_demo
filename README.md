@@ -50,40 +50,35 @@ The AWS identity running Terraform needs permissions to create: VPC, EC2, IAM ro
 
 Deployment is a **two-step process**: `init/` creates infrastructure and bootstraps Vault; `config/` applies Vault configuration using Terraform's native Vault provider.
 
-### Step 1 — Infrastructure (`init/`)
+### Step 1 — Setup Variables (`init/` and `config/`)
+
+Review `terraform.tfvars` in both `init/` and `config/` before deploying. If modifying defaults, ensure values that appear in both (e.g. `project_name`, `aws_region`) match.
+
+### Step 2 — Infrastructure (`init/`)
 
 ```bash
 git clone https://github.com/lukeb0t/vault_mongodb_lambda_demo.git
 cd vault_mongodb_lambda_demo/init
 
-# Review terraform.tfvars before deploying — defaults work out of the box
-
 # Deploy infrastructure (~5 minutes; EC2 bootstrap runs in the background)
 terraform init
 terraform apply
 
-# After apply completes, wait for the EC2 bootstrap to finish.
-# The bootstrap writes a sentinel to SSM when done (~3-5 min after apply).
-# You can monitor it:
+# The bootstrap will take 3-5 minutes to complete.
+# When this returns a value (hvs.xxx...) the bootstrap is done:
 aws ssm get-parameter \
   --name '/vault-mongo-demo/root-token' \
   --with-decryption \
   --region us-east-1 \
   --query Parameter.Value --output text
-# When this returns a value (hvs.xxx...) the bootstrap is done.
-
-# Verify Vault is up:
-echo "Vault UI: $(terraform output -raw vault_ui_url)"
 ```
 
-### Step 2 — Vault Configuration (`config/`)
+### Step 3 — Vault Configuration (`config/`)
 
 The `config/` run uses the Vault provider to configure auth, the database secrets engine, and policies. It reads the Vault address and root token from SSM using a helper script.
 
 ```bash
 cd ../config
-
-# Review terraform.tfvars if you changed project_name or aws_region in init/.
 
 # Fetch Vault address + root token from SSM and export them as env vars.
 # The Vault provider reads VAULT_ADDR and VAULT_TOKEN automatically.
@@ -92,6 +87,7 @@ eval $(../scripts/get-config-vars.sh)
 # Verify the values were set:
 echo "VAULT_ADDR=$VAULT_ADDR"
 
+# Run the config init and apply
 terraform init
 terraform apply
 ```
@@ -109,7 +105,7 @@ aws lambda invoke \
 # {"success":true,"readBackVerified":true,"vaultDynamicUser":"v-aws-vault-mongo-lambda-mongo-ro-..."}
 ```
 
-### Other Useful Commands
+### Accessing Demo Resources
 
 ```bash
 # Open the Vault UI (sign in with root token from SSM):
