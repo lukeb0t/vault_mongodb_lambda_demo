@@ -170,7 +170,6 @@ The Vault Lambda Extension supports two run modes, configured via the `VAULT_RUN
 - You want the simplest integration — no Vault API calls in function code, just read a file
 - You're adding Vault to an existing Lambda with minimal code changes
 
-> **Why this demo uses proxy mode:** Dynamic MongoDB credentials must be requested at invocation time — Vault creates a new temporary MongoDB user on each call. File mode writes secrets once at cold start, which would not work for per-invocation dynamic credentials.
 
 ---
 
