@@ -51,22 +51,9 @@ resource "vault_aws_auth_backend_role" "lambda" {
   role      = "${var.project_name}-lambda-role"
   auth_type = "iam"
 
-  # Scoped to the Lambda's IAM execution role.
-  # Vault resolves this IAM role ARN to its unique ID (AROA...) via iam:GetRole
-  # and stores that ID as the binding — not the human-readable ARN.
-  #
-  # IMPORTANT — why we use the IAM role ARN here instead of the STS assumed-role ARN:
-  # Vault's AWS auth (type=iam) always resolves principals to their underlying IAM entity.
-  # STS assumed-role ARNs (arn:aws:sts::...:assumed-role/...) are NOT supported as
-  # bare bound_iam_principal_arns values when resolve_aws_unique_ids = false — Vault
-  # still tries to resolve the ARN and fails with "does not belong to the role".
-  # The correct binding format is always the IAM role ARN (arn:aws:iam::...:role/...).
-  #
-  # Scope implications: any caller that assumes vault-mongo-demo-lambda-role can
-  # authenticate with this Vault role. In this deployment that role is used exclusively
-  # by the demo Lambda, so the effective scope IS the Lambda function.
-  # → To tighten further: create a separate IAM execution role per Lambda function so
-  #   the IAM role itself uniquely identifies the function.
+  # Lambda IAM execution role ARN. Must use IAM ARN format (arn:aws:iam::...:role/...) —
+  # Vault resolves it to the immutable unique ID (AROA...) stored as the binding.
+  # STS assumed-role ARNs are not supported as bound_iam_principal_arns values.
   bound_iam_principal_arns = [data.aws_ssm_parameter.lambda_role_arn.value]
 
   # Restricts logins to tokens originating from this specific AWS account.

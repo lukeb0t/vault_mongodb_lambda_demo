@@ -119,9 +119,8 @@ resource "aws_security_group" "lambda" {
   description = "Allow outbound to Vault/MongoDB EC2 and to AWS APIs."
   vpc_id      = local.vpc_id
 
-  # Lambda's outbound traffic stays entirely within the VPC — it only talks to
-  # the EC2 instance (Vault on 8200, MongoDB on 27017) via private IP.
-  # No NAT Gateway or internet access is needed.
+  # Lambda's outbound traffic stays entirely within the VPC.
+  # No NAT Gateway is required — Lambda only reaches EC2 via VPC-local routing.
   egress {
     description = "All outbound (Vault + MongoDB via VPC-local routing)"
     from_port   = 0

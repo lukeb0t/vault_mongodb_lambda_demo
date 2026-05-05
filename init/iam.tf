@@ -61,25 +61,18 @@ resource "aws_iam_role_policy" "ec2" {
       },
       {
         # ── Vault AWS auth — caller identity verification ──────────────────
-        # When Lambda authenticates, the Vault AWS auth method calls
-        # sts:GetCallerIdentity to verify the signed request that the Lambda
-        # Extension sent.  The EC2 instance role makes this call on behalf of
-        # Vault.  sts:GetCallerIdentity technically requires no IAM permission
-        # (any authenticated principal can call it), but making it explicit
-        # documents the intent clearly.
+        # Vault calls sts:GetCallerIdentity to verify the signed IAM request
+        # sent by the Lambda Extension at login time.
         Sid      = "STSGetCallerIdentity"
         Effect   = "Allow"
         Action   = "sts:GetCallerIdentity"
         Resource = "*"
       },
       {
-        # ── Vault AWS auth — role ARN resolution ──────────────────────────
-        # Vault resolves the bound_iam_principal_arn to a unique role ID so
-        # that if the Lambda role is deleted and recreated with the same name,
-        # existing Vault role bindings are not silently re-used (role ID
-        # changes on recreation, so the binding would fail).
-        # Without this permission, Vault returns 400 when creating an AWS
-        # auth role that contains an IAM role ARN.
+        # ── Vault AWS auth — role ARN → unique ID resolution ──────────────
+        # Vault calls iam:GetRole to resolve the Lambda role ARN to its
+        # immutable unique ID (AROA...). Required when creating the Vault
+        # AWS auth role; without it Vault returns HTTP 400.
         Sid    = "IAMGetRole"
         Effect = "Allow"
         Action = "iam:GetRole"

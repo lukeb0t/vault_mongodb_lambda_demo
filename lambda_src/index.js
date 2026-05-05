@@ -1,54 +1,22 @@
 /**
  * index.js — Vault + MongoDB Dynamic Credentials Demo
  *
- * Demonstrates the end-to-end flow of using HashiCorp Vault's Lambda Extension
- * in proxy mode to retrieve short-lived MongoDB credentials via Vault's
- * database secrets engine, then performing read/write operations against MongoDB
- * using those credentials.
+ * Uses the Vault Lambda Extension (proxy mode) to obtain short-lived MongoDB
+ * credentials from Vault's database secrets engine, then writes and reads a
+ * document to confirm end-to-end access.
  *
- * Architecture:
- *
- *   ┌─────────────────────────────────────────────────────────────────┐
- *   │  Lambda execution environment                                   │
- *   │                                                                  │
- *   │  ┌─────────────────────────────────────────────────────────┐    │
- *   │  │ Vault Lambda Extension (vault-lambda-extension layer)   │    │
- *   │  │                                                          │    │
- *   │  │  On cold start:                                          │    │
- *   │  │    1. Reads AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY    │    │
- *   │  │       from the Lambda runtime environment                │    │
- *   │  │    2. Signs a GetCallerIdentity HTTP request             │    │
- *   │  │    3. POSTs the signed request to Vault (VLE_VAULT_ADDR) │    │
- *   │  │       at /v1/auth/aws/login                              │    │
- *   │  │    4. Receives a Vault token scoped to the lambda policy  │    │
- *   │  │    5. Starts a local HTTP proxy on 127.0.0.1:8200        │    │
- *   │  │    6. Injects the Vault token into every proxied request  │    │
- *   │  └─────────────────────────────────────────────────────────┘    │
- *   │                                                                  │
- *   │  ┌─────────────────────────────────────────────────────────┐    │
- *   │  │ This handler (index.js)                                  │    │
- *   │  │                                                          │    │
- *   │  │    GET http://127.0.0.1:8200/v1/database/creds/...       │    │
- *   │  │      → extension proxies to real Vault + injects token   │    │
- *   │  │      → Vault creates a temporary MongoDB user            │    │
- *   │  │      → returns username + password (TTL: 1h)             │    │
- *   │  │                                                          │    │
- *   │  │    new MongoClient(uri, { authSource: 'admin' })         │    │
- *   │  │      → connects to MongoDB on EC2 via VPC private IP     │    │
- *   │  │      → inserts a document into mongoDB_demo.events       │    │
- *   │  │      → reads it back to verify read/write access         │    │
- *   │  └─────────────────────────────────────────────────────────┘    │
- *   └─────────────────────────────────────────────────────────────────┘
+ * Flow: Extension authenticates to Vault via AWS IAM → receives token →
+ *       proxies requests from this handler → Vault issues dynamic creds →
+ *       handler connects to MongoDB and performs read/write demo.
  *
  * Environment variables (set by lambda.tf):
  *   VAULT_ADDR          — Local proxy address (http://127.0.0.1:8200)
- *   VAULT_DB_CREDS_PATH — Vault path for MongoDB credentials
+ *   VAULT_DB_CREDS_PATH — Vault path for dynamic MongoDB credentials
  *   MONGODB_HOST        — EC2 private IP running MongoDB
- *   MONGODB_PORT        — MongoDB port (default 27017)
- *   MONGODB_DATABASE    — Target database name (mongoDB_demo)
+ *   MONGODB_PORT        — MongoDB port (default: 27017)
+ *   MONGODB_DATABASE    — Target database name (default: mongoDB_demo)
  *
- * Runtime: Node.js 22.x (uses native fetch — no node-fetch needed)
- * Dependencies: mongodb ^6.8.0 (see package.json)
+ * Runtime: Node.js 22.x  |  Dependencies: mongodb ^6.8.0
  */
 'use strict';
 
